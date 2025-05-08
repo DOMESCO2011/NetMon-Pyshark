@@ -12,6 +12,13 @@ import os
 import psutil
 import socket
 import requests
+import sys
+if not sys.hexversion > 0x03000000:
+    version = 2
+else:
+    version = 3
+
+comname = socket.gethostname()
 
 
 from mac_vendors import mac_vendors
@@ -23,7 +30,7 @@ print(mac_vendors["FC:FA:F7"])
 class NetworkMonitorApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Network Monitor")
+        self.title(f"Pyshark NetMon {comname}")
         self.geometry("1300x800")
         self.running = False
         self.filter_ip = None
@@ -223,9 +230,12 @@ class NetworkMonitorApp(tk.Tk):
         # --- Vezérlés ---
         ctrl = tk.Frame(self)
         ctrl.pack(fill="x", pady=5)
-
         tk.Label(ctrl, text="Interfész:").pack(side="left", padx=5)
-        tk.Entry(ctrl, textvariable=self.interface_var, width=15).pack(side="left", padx=5)
+
+        self.interface_var = tk.StringVar(value="Wi-fi")  # Alapértelmezett érték
+
+        tk.Radiobutton(ctrl, text="Wi-fi", variable=self.interface_var, value="Wi-Fi").pack(side="left", padx=5)
+        tk.Radiobutton(ctrl, text="Ethernet", variable=self.interface_var, value="Ethernet").pack(side="left", padx=5)
 
         self.start_btn = tk.Button(ctrl, text="Indítás", command=self.start_capture)
         self.start_btn.pack(side="left", padx=5)
@@ -535,7 +545,8 @@ class NetworkMonitorApp(tk.Tk):
                 help_list = [
                     ("help", "Parancslista megjelenítése"),
                     ("clear", "Parancssor törlése"),
-                    ("myip", "Helyi és publikus IP megjelenítése"),
+                    ("getip", "Helyi és publikus IP megjelenítése"),
+                    ("getmac", "MAC címek megjelenítése"),
                     ("hostname", "Gépnév megjelenítése"),
                     ("os", "Operációs rendszer neve"),
                     ("uptime", "Rendszer működési ideje"),
@@ -560,6 +571,10 @@ class NetworkMonitorApp(tk.Tk):
                     ("speed", "Internet sebességmérés"),
                     ("echo <szöveg>", "Szöveg kiírása"),
                     ("time", "Aktuális idő megjelenítése"),
+                    ("ipconfig", "IP konfiguráció megjelenítése"),
+                    ("ns", "nslookup cmd eszköz"),
+                    ("mainsystem", "systeminfo lefuttatása"),
+                    ("runascmd", "parancs futtatása cmd-ben"),
                 ]
 
                 self.cmd_output.insert("end", "Parancsok és funkcióik:\n\n")
@@ -715,6 +730,26 @@ class NetworkMonitorApp(tk.Tk):
             elif cmd == "time":
                 now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 self.cmd_output.insert("end", f"Jelenlegi idő: {now}\n")
+            elif cmd == "ipconfig":
+                outp = subprocess.check_output("ipconfig", shell=True, text=True)
+                self.cmd_output.insert("end", f"{outp}")
+            elif cmd == "getmac":
+                outp = subprocess.check_output("getmac", shell=True, text=True)
+                self.cmd_output.insert("end", f"{outp}")
+            elif cmd == "ns":
+                outp = subprocess.check_output("nslookup", shell=True, text=True)
+                self.cmd_output.insert("end", f"{outp}")
+            elif cmd == "ns":
+                outp = subprocess.check_output("nslookup", shell=True, text=True)
+                self.cmd_output.insert("end", f"{outp}")
+            elif cmd == "mainsystem":
+                outp = subprocess.check_output("Systeminfo.exe", shell=True, text=True)
+                self.cmd_output.insert("end", f"{outp}")
+            elif cmd == "runascmd" and args:
+                outp = subprocess.check_output(args, shell=True, text=True)
+                self.cmd_output.insert("end", f"{outp}")
+
+
             
             else:
                 self.cmd_output.insert("end", f"Ismeretlen parancs: {cmd}\nÍrd be a 'help' parancsot a listához\n")

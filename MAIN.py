@@ -192,7 +192,14 @@ class NetworkMonitorApp(tk.Tk):
         help_menu.add_command(label="Snake", command=lambda: subprocess.Popen(f'start cmd /k python "{snake_teljes_ut}"', shell=True))
         menubar.add_cascade(label="Súgó", menu=help_menu)
 
-
+    def get_device_list(self):
+        devices = []
+        content = self.device_list.get("1.0", "end").splitlines()
+        for line in content[1:]:  # Első sor fejléc, azt kihagyjuk
+            parts = line.split()
+            if len(parts) >= 3:
+                devices.append((parts[0], parts[1], parts[2]))
+        return devices
 
 
 

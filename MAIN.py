@@ -58,14 +58,18 @@ class NetworkMonitorApp(tk.Tk):
         band_fajl = "ext_bandwidth.pyw"
         lanc_fajl = "ext_chat.pyw"
         proto_fajl = "help_proto.pyw"
+        snake_fajl = "ext_snake.pyw"
 
         global band_teljes_ut
         global lanc_teljes_ut
         global proto_teljes_ut
+        global snake_teljes_ut
 
         band_teljes_ut = os.path.join(os.path.dirname(__file__), band_fajl)
         lanc_teljes_ut = os.path.join(os.path.dirname(__file__), lanc_fajl)
         proto_teljes_ut = os.path.join(os.path.dirname(__file__), proto_fajl)
+        snake_teljes_ut = os.path.join(os.path.dirname(__file__), snake_fajl)
+
 
     
         
@@ -184,6 +188,8 @@ class NetworkMonitorApp(tk.Tk):
         help_menu.add_command(label="Névjegy", command=lambda: mb.showinfo("Névjegy", "Hálózati Monitor\nDOMESCO által\nVerzió: Indev final v2 HUN" ))
         help_menu.add_separator()
         help_menu.add_command(label="Protokoll", command=lambda: subprocess.Popen(f'start cmd /k python "{proto_teljes_ut}"', shell=True))
+        help_menu.add_separator()
+        help_menu.add_command(label="Snake", command=lambda: subprocess.Popen(f'start cmd /k python "{snake_teljes_ut}"', shell=True))
         menubar.add_cascade(label="Súgó", menu=help_menu)
 
 

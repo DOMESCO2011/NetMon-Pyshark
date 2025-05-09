@@ -58,7 +58,7 @@ class NetworkMonitorApp(tk.Tk):
         band_fajl = "ext_bandwidth.pyw"
         lanc_fajl = "ext_chat.pyw"
         proto_fajl = "help_proto.pyw"
-        snake_fajl = "ext_snake.pyw"
+        snake_fajl = "ext_snake.py"
 
         global band_teljes_ut
         global lanc_teljes_ut

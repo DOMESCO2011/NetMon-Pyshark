@@ -13,11 +13,7 @@ import os
 import psutil
 import socket
 import requests
-import sys
-if not sys.hexversion > 0x03000000:
-    version = 2
-else:
-    version = 3
+
 
 comname = socket.gethostname()
 
@@ -25,7 +21,6 @@ comname = socket.gethostname()
 from mac_vendors import mac_vendors
 from mac_spec import special_macs
 
-print(mac_vendors["FC:FA:F7"])
 
 
 class NetworkMonitorApp(tk.Tk):

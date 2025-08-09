@@ -8,11 +8,27 @@ import subprocess
 import socket
 import platform
 import json
+import yaml
 import csv
 import os
 import psutil
 import socket
 import requests
+
+
+arp_scannable = True
+tcp_scannable = True
+udp_scannable = True
+icmp_scannable = True
+ip_scannable = True
+dns_scannable = True
+dhcp_scannable = True
+ethernet_scannable = True
+bgp_scannable = True
+smtp_scannable = False
+pop3_scannable = False
+imap_scannable = False
+ntp_scannable = True
 
 
 comname = socket.gethostname()
@@ -93,6 +109,20 @@ class NetworkMonitorApp(tk.Tk):
         self.log_box.tag_configure("imap", background="#83ff9e")
         self.log_box.tag_configure("ntp", background="#ffd783")
         self.log_box.tag_configure("other", background="#eeeeee")
+        
+        self.arp_scannable = True
+        self.tcp_scannable = True
+        self.udp_scannable = True
+        self.icmp_scannable = True
+        self.ip_scannable = True
+        self.dns_scannable = True
+        self.dhcp_scannable = True
+        self.ethernet_scannable = True
+        self.bgp_scannable = True
+        self.smtp_scannable = True
+        self.pop3_scannable = True
+        self.imap_scannable = True
+        self.ntp_scannable = True
 
     def name_ip(self):
         """Párbeszédablak megnyitása IP cím elnevezéséhez"""
@@ -160,6 +190,7 @@ class NetworkMonitorApp(tk.Tk):
         view_menu.add_command(label="Log törlése", command=lambda: self.log_box.delete("1.0", "end"))
         view_menu.add_command(label="Eszközlista törlése", command=lambda: self.device_list.delete("1.0", "end"))
         view_menu.add_command(label="Parancskimenet törlése", command=lambda: self.cmd_output.delete("1.0", "end"))
+        view_menu.add_command(label="Protokollszűrés", command=self.protoszures_ablak)
         view_menu.add_separator()
         view_menu.add_command(label="Teljes képernyő", command=lambda: self.attributes("-fullscreen", True))
         view_menu.add_command(label="Ablak vissza", command=lambda: self.attributes("-fullscreen", False))
@@ -252,6 +283,45 @@ class NetworkMonitorApp(tk.Tk):
 
         self.status_label = tk.Label(ctrl, text="Állapot: Inaktív", fg="red")
         self.status_label.pack(side="left", padx=20)
+
+    def protoszures_ablak(self):
+        """Megjelenít egy ablakot a protokollok szűrésének beállítására."""
+        window = tk.Toplevel(self)
+        window.title("Protokoll szűrés beállítása")
+
+        # Egy egyszerű checkbox lista protokollokra
+        protocols = [
+            ("ARP", "arp_scannable"),
+            ("TCP", "tcp_scannable"),
+            ("UDP", "udp_scannable"),
+            ("ICMP", "icmp_scannable"),
+            ("IP", "ip_scannable"),
+            ("DNS", "dns_scannable"),
+            ("DHCP", "dhcp_scannable"),
+            ("Ethernet", "ethernet_scannable"),
+            ("BGP", "bgp_scannable"),
+            ("SMTP", "smtp_scannable"),
+            ("POP3", "pop3_scannable"),
+            ("IMAP", "imap_scannable"),
+            ("NTP", "ntp_scannable"),
+        ]
+
+        vars = {}
+        for i, (label, attr) in enumerate(protocols):
+            var = tk.BooleanVar(value=getattr(self, attr))
+            vars[attr] = var
+            cb = tk.Checkbutton(window, text=label, variable=var)
+            cb.grid(row=i, column=0, sticky="w", padx=10, pady=2)
+
+        def save_settings():
+            for attr, var in vars.items():
+                setattr(self, attr, var.get())
+            self.log("Protokoll szűrők frissítve.")
+            window.destroy()
+
+        save_btn = tk.Button(window, text="Mentés", command=save_settings)
+        save_btn.grid(row=len(protocols), column=0, pady=10)
+
 
     def update_bandwidth(self):
         counters = psutil.net_io_counters()
@@ -357,34 +427,35 @@ class NetworkMonitorApp(tk.Tk):
                 
             src_ip = packet[scapy.IP].src
             dst_ip = packet[scapy.IP].dst
-            if packet.haslayer(scapy.ARP):
+            if packet.haslayer(scapy.ARP) and self.arp_scannable:
                 proto = "arp"
-            elif packet.haslayer(scapy.TCP):
+            elif packet.haslayer(scapy.TCP) and self.tcp_scannable:
                 proto = "tcp"
-            elif packet.haslayer(scapy.UDP):
+            elif packet.haslayer(scapy.UDP) and self.udp_scannable:
                 proto = "udp"
-            elif packet.haslayer(scapy.ICMP):
+            elif packet.haslayer(scapy.ICMP) and self.icmp_scannable:
                 proto = "icmp"
-            elif packet.haslayer(scapy.IP):
-                proto = "ip"
-            elif packet.haslayer(scapy.DNS):
+            elif packet.haslayer(scapy.DNS) and self.dns_scannable:
                 proto = "dns"
-            elif packet.haslayer(scapy.DHCP):
+            elif packet.haslayer(scapy.DHCP) and self.dhcp_scannable:
                 proto = "dhcp"
-            elif packet.haslayer(scapy.Ether):
+            elif packet.haslayer(scapy.Ether) and self.ethernet_scannable:
                 proto = "ethernet"
-            elif packet.haslayer(scapy.BGP):
+            elif packet.haslayer(scapy.BGP) and self.bgp_scannable:
                 proto = "bgp"
-            elif packet.haslayer(scapy.SMTP):
+            elif packet.haslayer(scapy.SMTP) and self.smtp_scannable:
                 proto = "smtp"
-            elif packet.haslayer(scapy.POP3):
+            elif packet.haslayer(scapy.POP3) and self.pop3_scannable:
                 proto = "pop3"
-            elif packet.haslayer(scapy.IMAP):
+            elif packet.haslayer(scapy.IMAP) and self.imap_scannable:
                 proto = "imap"
-            elif packet.haslayer(scapy.NTP):
+            elif packet.haslayer(scapy.NTP) and self.ntp_scannable:
                 proto = "ntp"
+            elif packet.haslayer(scapy.IP) and self.ip_scannable:
+                proto = "ip"
             else:
                 proto = "Other"
+
 
                 
             info = f"{proto.upper()} - {src_ip} -> {dst_ip}"
@@ -776,6 +847,7 @@ class NetworkMonitorApp(tk.Tk):
 if __name__ == "__main__":
     app = NetworkMonitorApp()
     app.mainloop()
+    
     
 
 

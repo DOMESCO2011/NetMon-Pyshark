@@ -587,7 +587,7 @@ class NetworkMonitorApp(tk.Tk):
 
     def process_packet(self, packet):
         global PACALLBACK
-        if PACALLBACK = "multi":
+        if PACALLBACK == "multi":
             proto, info = self.packet_callback_multi(packet)
         else:
             proto, info = self.packet_callback_normal(packet)

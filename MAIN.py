@@ -124,6 +124,8 @@ class NetworkMonitorApp(tk.Tk):
         self.imap_scannable = True
         self.ntp_scannable = True
 
+        PACALLBACK = "normal"
+
     def name_ip(self):
         """Párbeszédablak megnyitása IP cím elnevezéséhez"""
         import tkinter.simpledialog as sd
@@ -183,6 +185,8 @@ class NetworkMonitorApp(tk.Tk):
         net_menu.add_command(label="Bandwidth monitor megnyitása", command=lambda: subprocess.Popen(f'start cmd /k python "{band_teljes_ut}"', shell=True))
         net_menu.add_command(label="LAN chat megnyitása", command=lambda: subprocess.Popen(f'start cmd /k python "{lanc_teljes_ut}"', shell=True))
         net_menu.add_command(label="IP cím elnevezése", command=self.name_ip)
+        net_menu.add_separator()
+        net_menu.add_command(label="Autómatikus csomagfeldolgozás", command=self.set_pacallback)
         menubar.add_cascade(label="Hálózat", menu=net_menu)
 
         # === Nézet ===
@@ -283,6 +287,10 @@ class NetworkMonitorApp(tk.Tk):
 
         self.status_label = tk.Label(ctrl, text="Állapot: Inaktív", fg="red")
         self.status_label.pack(side="left", padx=20)
+
+    def set_pacallback(self):
+        PACALLBACK = "normal"
+        
 
     def protoszures_ablak(self):
         """Megjelenít egy ablakot a protokollok szűrésének beállítására."""
@@ -420,7 +428,7 @@ class NetworkMonitorApp(tk.Tk):
             if keyword in line.lower():
                 self.log_box.insert("end", line + "\n")
 
-    def packet_callback(self, packet):
+    def packet_callback_normal(self, packet):
         try:
             if not packet.haslayer(scapy.IP):
                 return "other", None
@@ -463,6 +471,108 @@ class NetworkMonitorApp(tk.Tk):
             
         except Exception as e:
             return "other", f"Hiba a csomag feldolgozásakor: {e}"
+        
+    def packet_callback_multi(self, packet):
+        try:
+            if not packet.haslayer(scapy.IP):
+                return "other", None
+
+            src_ip = packet[scapy.IP].src
+            dst_ip = packet[scapy.IP].dst
+
+            proto = "Other"
+
+            # 1) Scapy-native detektálások (azonnal)
+            if packet.haslayer(scapy.ARP) and self.arp_scannable:
+                proto = "arp"
+            elif packet.haslayer(scapy.TCP) and self.tcp_scannable:
+                # majd később TCP-specifikus manuális felismerés jöhet
+                proto = "tcp"
+            elif packet.haslayer(scapy.UDP) and self.udp_scannable:
+                # UDP-specifikus vizsgálat lentebb
+                pass
+            elif packet.haslayer(scapy.ICMP) and self.icmp_scannable:
+                proto = "icmp"
+            elif packet.haslayer(scapy.DNS) and self.dns_scannable:
+                proto = "dns"
+            elif packet.haslayer(scapy.Ether) and self.ethernet_scannable:
+                proto = "ethernet"
+
+            # 2) Broadcast / Multicast kezelés
+            # multicast tartomány: 224.0.0.0 - 239.255.255.255
+            try:
+                first_octet = int(dst_ip.split('.')[0])
+            except Exception:
+                first_octet = -1
+
+            if first_octet >= 224 and first_octet <= 239:
+                # Példák: SSDP a 239.255.255.250-en
+                if dst_ip == "239.255.255.250":
+                    if self.udp_scannable and packet.haslayer(scapy.UDP):
+                        sport = packet[scapy.UDP].sport
+                        dport = packet[scapy.UDP].dport
+                        if sport == 1900 or dport == 1900:
+                            proto = "ssdp"   # javasolt címke
+                else:
+                    proto = "multicast"
+
+            # broadcast (végződés .255 a helyi alhálózaton)
+            if dst_ip.endswith(".255"):
+                proto = "broadcast"
+
+            # 3) UDP/TCP port alapú manuális felismerés (amiket Scapy nem ad külön)
+            if packet.haslayer(scapy.UDP):
+                sport = packet[scapy.UDP].sport
+                dport = packet[scapy.UDP].dport
+
+                # DNS (ha Scapy nem fedte le)
+                if (sport == 53 or dport == 53) and self.dns_scannable:
+                    proto = "dns"
+                # DHCP (UDP 67/68)
+                elif (sport in (67,68) or dport in (67,68)) and self.dhcp_scannable:
+                    proto = "dhcp"
+                # NTP (UDP 123)
+                elif (sport == 123 or dport == 123) and self.ntp_scannable:
+                    proto = "ntp"
+                # SSDP (UDP 1900) — jellemző a multicast címre is
+                elif (sport == 1900 or dport == 1900) and self.udp_scannable:
+                    proto = "ssdp"
+                # ha még mindig UDP, és engedélyezett az "udp"
+                elif self.udp_scannable:
+                    proto = "udp"
+                else:
+                    # UDP van, de szűrt (pl. udp_scannable False) => elrejthetjük
+                    if not self.udp_scannable:
+                        return "filtered", None
+
+            if packet.haslayer(scapy.TCP):
+                sport = packet[scapy.TCP].sport
+                dport = packet[scapy.TCP].dport
+                # BGP TCP 179
+                if (sport == 179 or dport == 179) and self.bgp_scannable:
+                    proto = "bgp"
+                # SMTP / POP3 / IMAP portok
+                elif (sport == 25 or dport == 25) and self.smtp_scannable:
+                    proto = "smtp"
+                elif (sport == 110 or dport == 110) and self.pop3_scannable:
+                    proto = "pop3"
+                elif (sport == 143 or dport == 143) and self.imap_scannable:
+                    proto = "imap"
+                # egyéb TCP maradhat tcp címkével (ha engedélyezett)
+                elif self.tcp_scannable:
+                    proto = "tcp"
+                else:
+                    return "filtered", None
+
+            # 4) Ha végül csak IP marad
+            if proto == "Other" and packet.haslayer(scapy.IP) and self.ip_scannable:
+                proto = "ip"
+
+            info = f"{proto.upper()} - {src_ip} -> {dst_ip}"
+            return proto, info
+
+        except Exception as e:
+            return "other", f"Hiba a csomag feldolgozásakor: {e}"
 
     def capture_packets(self):
         try:
@@ -473,9 +583,14 @@ class NetworkMonitorApp(tk.Tk):
         except Exception as e:
             self.log(f"Hiba: {e}", "other")
             self.status_label.config(text="Állapot: Hiba", fg="orange")
+    
 
     def process_packet(self, packet):
-        proto, info = self.packet_callback(packet)
+        global PACALLBACK
+        if PACALLBACK = "multi":
+            proto, info = self.packet_callback_multi(packet)
+        else:
+            proto, info = self.packet_callback_normal(packet)
         if info:
             self.log(info, proto)
             if proto.upper() in self.packet_stats:

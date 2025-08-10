@@ -186,7 +186,8 @@ class NetworkMonitorApp(tk.Tk):
         net_menu.add_command(label="LAN chat megnyitása", command=lambda: subprocess.Popen(f'start cmd /k python "{lanc_teljes_ut}"', shell=True))
         net_menu.add_command(label="IP cím elnevezése", command=self.name_ip)
         net_menu.add_separator()
-        net_menu.add_command(label="Autómatikus csomagfeldolgozás", command=self.set_pacallback)
+        net_menu.add_command(label="Autómatikus csomagfeldolgozás", command=self.set_pacallback("normal"))
+        net_menu.add_command(label="Multicast csomagfeldolgozás", command=self.set_pacallback("multi"))
         menubar.add_cascade(label="Hálózat", menu=net_menu)
 
         # === Nézet ===
@@ -288,8 +289,8 @@ class NetworkMonitorApp(tk.Tk):
         self.status_label = tk.Label(ctrl, text="Állapot: Inaktív", fg="red")
         self.status_label.pack(side="left", padx=20)
 
-    def set_pacallback(self):
-        PACALLBACK = "normal"
+    def set_pacallback(self, ertek):
+        PACALLBACK = ertek
         
 
     def protoszures_ablak(self):
